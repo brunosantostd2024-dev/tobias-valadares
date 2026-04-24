@@ -1177,6 +1177,9 @@ async function doLogin(){
   const u=document.getElementById('login-user').value.trim();
   const p=document.getElementById('login-pass').value;
   const err=document.getElementById('login-error');
+  const btn=document.querySelector('.login-btn');
+  btn.textContent='Entrando...';btn.disabled=true;
+  err.style.display='none';
   try {
     const data = await api('POST','/auth/login',{email:u, senha:p});
     TOKEN = data.token;
@@ -1187,12 +1190,16 @@ async function doLogin(){
     document.getElementById('site-publico').style.display='none';
     document.getElementById('admin-panel').style.display='block';
     await carregarDados();
-    document.getElementById('data-hoje').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    const dhEl=document.getElementById('data-hoje');
+    if(dhEl)dhEl.textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     document.getElementById('nc-entrada').value=new Date().toISOString().split('T')[0];
     toast('Bem-vinda ao painel administrativo!','success');
   } catch(e) {
-    err.style.display='block';err.textContent=e.message||'Usuário ou senha incorretos.';
-    setTimeout(()=>err.style.display='none',3000);
+    err.style.display='block';
+    err.textContent = e.message || 'Usuário ou senha incorretos.';
+    console.error('Erro login:', e);
+  } finally {
+    btn.textContent='Entrar';btn.disabled=false;
   }
 }
 
@@ -1779,9 +1786,6 @@ function calcBeneficio(){
   document.getElementById('beneficio-empty').style.display='none';
 }
 
-// ── HISTÓRICO ──
-const historico=[];
-
 async function salvarCalculo(){
   const totalEl=document.getElementById('res-total-tempo');
   if(!totalEl||!totalEl.textContent)return;
@@ -1849,7 +1853,6 @@ function adminNav(section,el){
 }
 
 // ── HISTÓRICO local array (removido - agora usa API) ──
-const historico=[];
 
 // init
 document.addEventListener('DOMContentLoaded',()=>{
