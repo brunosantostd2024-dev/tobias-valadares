@@ -1123,8 +1123,46 @@ textarea.form-input{min-height:100px;resize:vertical}
 </div><!-- /admin-panel -->
 
 <script>
-// ── DATA STORE (in-memory) ──
-const clientes = [
+// ── API CONFIG ──
+const API = '/api';
+let TOKEN = localStorage.getItem('tv_token') || '';
+let currentUser = JSON.parse(localStorage.getItem('tv_user') || 'null');
+
+async function api(method, endpoint, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${TOKEN}` }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + endpoint, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.erro || 'Erro na requisição');
+  return data;
+}
+
+// ── DATA STORE (cache local) ──
+let clientes = [];
+let processos = [];
+
+// COMPAT: mapeia campos do banco para o formato antigo
+function mapCliente(c) {
+  return {
+    id: c.id,
+    nome: c.nome,
+    cpf: c.cpf || '',
+    tel: c.telefone || '',
+    email: c.email || '',
+    area: c.area || '',
+    adv: c.advogada || '',
+    status: c.status || 'Ativo',
+    motivo: c.motivo || '',
+    obs: c.observacoes || '',
+    ...c
+  };
+}
+
+// FAKE clientes array para não quebrar (será substituído pelo DB)
+const clientesFake = [
   {id:1, nome:'Carlos Mendes', cpf:'123.456.789-00', tel:'(32) 9 9999-1234', email:'carlos@email.com', area:'Direito Previdenciário', adv:'Patrícia Tobias Santos', status:'Ativo', motivo:'Aposentadoria por tempo de contribuição — cliente com 32 anos de CNIS, aguardando análise.', obs:'Documentação completa recebida.'},
   {id:2, nome:'Ana Paula Souza', cpf:'987.654.321-00', tel:'(32) 9 9999-5678', email:'ana@email.com', area:'Direito Previdenciário', adv:'Maria Eduarda Valadares', status:'Ativo', motivo:'Pensão por morte do cônjuge falecido em jan/2025. Dependente sem renda.', obs:''},
   {id:3, nome:'Marcos Ribeiro', cpf:'456.789.123-00', tel:'(32) 9 9999-4567', email:'marcos@email.com', area:'Direito Previdenciário', adv:'Patrícia Tobias Santos', status:'Aguardando', motivo:'Auxílio-doença negado administrativamente. CID M54 — lombalgia grave.', obs:'Aguardando laudo médico atualizado.'},
@@ -1132,31 +1170,64 @@ const clientes = [
   {id:5, nome:'Roberto Lima', cpf:'654.321.098-00', tel:'(32) 9 9999-2345', email:'roberto@email.com', area:'Direito de Família', adv:'Patrícia Tobias Santos', status:'Concluído', motivo:'Divórcio consensual com partilha de bens.', obs:'Processo encerrado com êxito.'},
 ];
 
-const processos = [
-  {num:'0012345-67.2024.4.03.6183', cliente:'Carlos Mendes', area:'Previdenciário', tipo:'Aposentadoria por Tempo de Contribuição', status:'Em andamento', adv:'Patrícia Tobias', abertura:'10/01/2024', desc:'Cliente com 32 anos de contribuição, requer aposentadoria. Processo judicial após indeferimento administrativo.'},
-  {num:'0054321-89.2024.4.03.6183', cliente:'Ana Paula Souza', area:'Previdenciário', tipo:'Pensão por Morte', status:'Em andamento', adv:'Maria Eduarda', abertura:'15/02/2025', desc:'Dependente requerendo pensão por morte do cônjuge. Óbito em 12/01/2025.'},
-  {num:'Adm. INSS 2024/00987', cliente:'Marcos Ribeiro', area:'Previdenciário', tipo:'Auxílio-Doença (Recurso)', status:'Aguardando', adv:'Patrícia Tobias', abertura:'20/03/2024', desc:'Recurso administrativo após negativa do INSS. Aguardando novo laudo.'},
-  {num:'0078901-23.2023.8.13.0105', cliente:'Juliana Costa', area:'Civil', tipo:'Indenização por Danos Morais', status:'Em andamento', adv:'Maria Eduarda', abertura:'05/06/2023', desc:'Ação de indenização por negativação indevida em banco.'},
-  {num:'0033456-12.2023.8.13.0105', cliente:'Roberto Lima', area:'Família', tipo:'Divórcio Consensual', status:'Concluído', adv:'Patrícia Tobias', abertura:'01/03/2023', desc:'Divórcio encerrado com partilha amigável.'},
-];
-
-// ── ADMIN LOGIN ──
+// ── ADMIN LOGIN com API ──
 function openAdminLogin(){document.getElementById('admin-login-screen').style.display='block'}
-function doLogin(){
+
+async function doLogin(){
   const u=document.getElementById('login-user').value.trim();
   const p=document.getElementById('login-pass').value;
   const err=document.getElementById('login-error');
-  if((u==='admin'||u==='funcionario@escritorio.com')&&p==='tobias2025'){
+  try {
+    const data = await api('POST','/auth/login',{email:u, senha:p});
+    TOKEN = data.token;
+    currentUser = data.usuario;
+    localStorage.setItem('tv_token', TOKEN);
+    localStorage.setItem('tv_user', JSON.stringify(currentUser));
     document.getElementById('admin-login-screen').style.display='none';
     document.getElementById('site-publico').style.display='none';
     document.getElementById('admin-panel').style.display='block';
-    renderTabela();renderProcessos();renderClienteSelect();
+    await carregarDados();
     document.getElementById('data-hoje').textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
     document.getElementById('nc-entrada').value=new Date().toISOString().split('T')[0];
     toast('Bem-vinda ao painel administrativo!','success');
-  }else{err.style.display='block';setTimeout(()=>err.style.display='none',3000)}
+  } catch(e) {
+    err.style.display='block';err.textContent=e.message||'Usuário ou senha incorretos.';
+    setTimeout(()=>err.style.display='none',3000);
+  }
+}
+
+async function carregarDados() {
+  try {
+    // Carrega clientes e processos do banco
+    const [cls, pros] = await Promise.all([
+      api('GET','/clientes'),
+      api('GET','/processos')
+    ]);
+    clientes = cls.map(mapCliente);
+    processos = pros;
+    renderTabela();
+    renderProcessos();
+    renderClienteSelect();
+    // Dashboard métricas
+    const dash = await api('GET','/dashboard');
+    const ms = document.querySelectorAll('.metric-value');
+    if(ms[0]) ms[0].textContent = dash.totalClientes;
+    if(ms[1]) ms[1].textContent = dash.processosAtivos;
+    if(ms[2]) ms[2].textContent = dash.agendHoje;
+    if(ms[3]) ms[3].textContent = dash.concluidos;
+  } catch(e) {
+    // Se falhar (sem banco ainda), usa dados fake
+    clientes = clientesFake;
+    processos = [];
+    renderTabela();
+    renderProcessos();
+    renderClienteSelect();
+  }
 }
 function sairAdmin(){
+  TOKEN=''; currentUser=null;
+  localStorage.removeItem('tv_token');
+  localStorage.removeItem('tv_user');
   document.getElementById('admin-panel').style.display='none';
   document.getElementById('site-publico').style.display='block';
   toast('Sessão encerrada.');
@@ -1293,9 +1364,9 @@ function verCliente(id){
   adminNav('clientes',null);
 }
 
-// ── SALVAR CLIENTE ──
-let nextId=clientes.length+1;
-function salvarCliente(){
+// ── SALVAR CLIENTE via API ──
+let nextId=100;
+async function salvarCliente(){
   const nome=document.getElementById('nc-nome').value.trim();
   const cpf=document.getElementById('nc-cpf').value.trim();
   const tel=document.getElementById('nc-tel').value.trim();
@@ -1303,42 +1374,80 @@ function salvarCliente(){
   const area=document.getElementById('nc-area').value;
   const adv=document.getElementById('nc-adv').value;
   const motivo=document.getElementById('nc-motivo').value.trim();
-  const obs=document.getElementById('nc-obs').value.trim();
-  const status=document.getElementById('nc-status').value;
   if(!nome||!cpf||!tel||!area||!adv||!motivo){toast('Preencha todos os campos obrigatórios (*)','error');return;}
-  clientes.push({id:nextId++,nome,cpf,tel,email,area,adv,status,motivo,obs});
-  renderTabela();renderClienteSelect();
-  // limpar
-  ['nc-nome','nc-cpf','nc-rg','nc-tel','nc-email','nc-end','nc-prof','nc-renda','nc-nit','nc-beneficio','nc-cid','nc-tempo','nc-motivo','nc-obs','nc-honorarios'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  toast('Cliente cadastrado com sucesso!','success');
-  adminNav('clientes',null);
+  const payload = {
+    nome, cpf, telefone:tel, email, area, advogada:adv,
+    rg: document.getElementById('nc-rg').value,
+    data_nascimento: document.getElementById('nc-nasc').value||null,
+    estado_civil: document.getElementById('nc-civil').value,
+    endereco: document.getElementById('nc-end').value,
+    profissao: document.getElementById('nc-prof').value,
+    renda: document.getElementById('nc-renda').value,
+    nit: document.getElementById('nc-nit').value,
+    num_beneficio: document.getElementById('nc-beneficio').value,
+    cid: document.getElementById('nc-cid').value,
+    tempo_contribuicao: document.getElementById('nc-tempo').value,
+    tipo_atendimento: document.getElementById('nc-tipo').value,
+    status: document.getElementById('nc-status').value,
+    motivo: document.getElementById('nc-motivo').value,
+    observacoes: document.getElementById('nc-obs').value,
+    data_entrada: document.getElementById('nc-entrada').value||null,
+    honorarios: document.getElementById('nc-honorarios').value,
+  };
+  try {
+    const novo = await api('POST','/clientes', payload);
+    clientes.unshift(mapCliente(novo));
+    renderTabela(); renderClienteSelect();
+    ['nc-nome','nc-cpf','nc-rg','nc-tel','nc-email','nc-end','nc-prof','nc-renda','nc-nit','nc-beneficio','nc-cid','nc-tempo','nc-motivo','nc-obs','nc-honorarios'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    toast('Cliente cadastrado com sucesso no banco de dados!','success');
+    adminNav('clientes',null);
+  } catch(e) {
+    toast('Erro ao salvar: '+e.message,'error');
+  }
 }
 
-// ── SALVAR PROCESSO ──
-function salvarProcesso(){
-  const num=document.getElementById('np-num').value.trim()||'S/N – '+Date.now();
+// ── SALVAR PROCESSO via API ──
+async function salvarProcesso(){
+  const num=document.getElementById('np-num').value.trim()||'S/N';
   const clienteId=document.getElementById('np-cliente').value;
   if(!clienteId){toast('Selecione um cliente','error');return;}
   const cliente=clientes.find(c=>c.id==clienteId);
-  const area=document.getElementById('np-area').value;
-  const tipo=document.getElementById('np-tipo').value.trim()||area;
-  const desc=document.getElementById('np-desc').value.trim();
-  const status=document.getElementById('np-status').value;
-  const adv=document.getElementById('np-adv').value.split(' ')[0]+' '+document.getElementById('np-adv').value.split(' ')[1];
-  const abertura=document.getElementById('np-abertura').value||new Date().toLocaleDateString('pt-BR');
-  processos.push({num,cliente:cliente.nome,area,tipo,status,adv,abertura,desc});
-  renderProcessos();
-  toast('Processo registrado com sucesso!','success');
-  adminNav('processos',null);
+  const payload = {
+    num_processo: num,
+    cliente_id: clienteId,
+    cliente_nome: cliente ? cliente.nome : '',
+    area: document.getElementById('np-area').value,
+    tipo_acao: document.getElementById('np-tipo').value,
+    descricao: document.getElementById('np-desc').value,
+    status: document.getElementById('np-status').value,
+    advogada: document.getElementById('np-adv').value,
+    data_abertura: document.getElementById('np-abertura').value||null,
+    data_prazo: document.getElementById('np-prazo').value||null,
+    andamentos: document.getElementById('np-andamentos').value,
+  };
+  try {
+    const novo = await api('POST','/processos', payload);
+    processos.unshift(novo);
+    renderProcessos();
+    toast('Processo registrado no banco de dados!','success');
+    adminNav('processos',null);
+  } catch(e) {
+    toast('Erro ao salvar processo: '+e.message,'error');
+  }
 }
 
-// ── REMOVER CLIENTE ──
-function removerCliente(id){
+// ── REMOVER CLIENTE via API ──
+async function removerCliente(id){
   if(!confirm('Tem certeza que deseja remover este cliente?'))return;
-  const idx=clientes.findIndex(c=>c.id===id);
-  if(idx>-1)clientes.splice(idx,1);
-  renderTabela();
-  toast('Cliente removido.');
+  try {
+    await api('DELETE',`/clientes/${id}`);
+    const idx=clientes.findIndex(c=>c.id===id);
+    if(idx>-1)clientes.splice(idx,1);
+    renderTabela();
+    toast('Cliente removido.');
+  } catch(e) {
+    toast('Erro ao remover: '+e.message,'error');
+  }
 }
 
 // ── TOAST ──
@@ -1673,46 +1782,59 @@ function calcBeneficio(){
 // ── HISTÓRICO ──
 const historico=[];
 
-function salvarCalculo(){
+async function salvarCalculo(){
   const totalEl=document.getElementById('res-total-tempo');
   if(!totalEl||!totalEl.textContent)return;
   const sexo=document.getElementById('calc-sexo').value;
   const clienteSel=document.getElementById('calc-cliente-sel');
+  const clienteId=clienteSel.value||null;
   const nomeCliente=clienteSel.options[clienteSel.selectedIndex].text;
-  historico.unshift({
-    data:new Date().toLocaleString('pt-BR'),
-    cliente:nomeCliente==='— Cálculo avulso —'?'Avulso':nomeCliente,
-    sexo:sexo==='M'?'Masculino':'Feminino',
-    total:totalEl.textContent,
-    periodos:periodos.length,
-    tipos:[...new Set(periodos.map(p=>p.tipo))].join(', '),
-  });
-  renderHistorico();
-  toast('Cálculo salvo no histórico!','success');
+  const payload = {
+    cliente_id: clienteId,
+    cliente_nome: nomeCliente==='— Cálculo avulso —'?'Avulso':nomeCliente,
+    sexo: sexo==='M'?'Masculino':'Feminino',
+    data_nascimento: document.getElementById('calc-nasc').value||null,
+    total_dias: parseInt(document.getElementById('res-total-dias').textContent)||0,
+    total_formatado: totalEl.textContent,
+    periodos: periodos,
+    elegibilidades: [],
+  };
+  try {
+    await api('POST','/calculos', payload);
+    await renderHistorico();
+    toast('Cálculo salvo no banco de dados!','success');
+  } catch(e) {
+    toast('Erro ao salvar cálculo: '+e.message,'error');
+  }
 }
 
-function renderHistorico(){
+async function renderHistorico(){
   const el=document.getElementById('historico-list');
   const empty=document.getElementById('historico-empty');
   if(!el)return;
-  if(!historico.length){
-    el.style.display='none';
-    if(empty)empty.style.display='block';
-    return;
-  }
-  if(empty)empty.style.display='none';
-  el.style.display='flex';
-  el.innerHTML=historico.map((h,i)=>`
-    <div style="background:var(--white);border:1px solid var(--cream2);border-radius:var(--r);padding:20px;border-left:3px solid var(--gold);">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-        <div>
-          <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--dark);">${h.cliente}</div>
-          <div style="font-size:12px;color:var(--muted);">${h.data} · ${h.sexo}</div>
+  try {
+    const historico = await api('GET','/calculos');
+    if(!historico.length){
+      el.style.display='none';
+      if(empty)empty.style.display='block';
+      return;
+    }
+    if(empty)empty.style.display='none';
+    el.style.display='flex';
+    el.innerHTML=historico.map((h)=>`
+      <div style="background:var(--white);border:1px solid var(--cream2);border-radius:var(--r);padding:20px;border-left:3px solid var(--gold);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--dark);">${h.cliente_nome}</div>
+            <div style="font-size:12px;color:var(--muted);">${new Date(h.criado_em).toLocaleString('pt-BR')} · ${h.sexo}</div>
+          </div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold);">${h.total_formatado}</div>
         </div>
-        <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold);">${h.total}</div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);">${h.periodos} período(s) · Tipos: ${h.tipos}</div>
-    </div>`).join('');
+        <div style="font-size:12px;color:var(--muted);">${h.periodos?.length||0} período(s)</div>
+      </div>`).join('');
+  } catch(e) {
+    el.innerHTML='<p style="color:var(--muted);font-size:13px;">Não foi possível carregar o histórico.</p>';
+  }
 }
 
 // ── atualiza select de clientes ao entrar na calculadora ──
@@ -1725,6 +1847,29 @@ function adminNav(section,el){
     if(!periodos.length)renderPeriodos();
   }
 }
+
+// ── HISTÓRICO local array (removido - agora usa API) ──
+const historico=[];
+
+// init
+document.addEventListener('DOMContentLoaded',()=>{
+  const ncEl=document.getElementById('nc-entrada');
+  const npEl=document.getElementById('np-abertura');
+  const crEl=document.getElementById('calc-ref');
+  if(ncEl)ncEl.value=new Date().toISOString().split('T')[0];
+  if(npEl)npEl.value=new Date().toISOString().split('T')[0];
+  if(crEl)crEl.value=new Date().toISOString().split('T')[0];
+  initSalariosInputs();
+  // Se já tiver token salvo, entra direto no admin
+  if(TOKEN && currentUser){
+    document.getElementById('site-publico').style.display='none';
+    document.getElementById('admin-panel').style.display='block';
+    carregarDados();
+    const dhEl=document.getElementById('data-hoje');
+    if(dhEl)dhEl.textContent=new Date().toLocaleDateString('pt-BR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    toast('Sessão restaurada!','success');
+  }
+});
 </script>
 </body>
 </html>
