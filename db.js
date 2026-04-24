@@ -15,6 +15,7 @@ async function initDB() {
         email VARCHAR(200) UNIQUE NOT NULL,
         senha VARCHAR(200) NOT NULL,
         role VARCHAR(50) DEFAULT 'funcionario',
+        cargo VARCHAR(100),
         criado_em TIMESTAMP DEFAULT NOW()
       );
 

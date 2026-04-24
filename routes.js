@@ -269,4 +269,40 @@ router.get('/dashboard', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ erro: e.message }); }
 });
 
+// ════════════════════════════
+// FUNCIONÁRIOS
+// ════════════════════════════
+router.get('/funcionarios', auth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT id, nome, email, role, cargo, criado_em FROM usuarios ORDER BY criado_em DESC');
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+router.post('/funcionarios', auth, async (req, res) => {
+  try {
+    const { nome, email, cargo, role, senha, observacoes } = req.body;
+    if (!nome || !email || !senha) return res.status(400).json({ erro: 'Nome, e-mail e senha são obrigatórios' });
+    const bcrypt = require('bcryptjs');
+    const hash = await bcrypt.hash(senha, 10);
+    // Adiciona coluna cargo se não existir
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS cargo VARCHAR(100)`).catch(()=>{});
+    const r = await pool.query(
+      'INSERT INTO usuarios (nome, email, senha, role, cargo) VALUES ($1,$2,$3,$4,$5) RETURNING id, nome, email, role, cargo, criado_em',
+      [nome, email, hash, role || 'funcionario', cargo || null]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(400).json({ erro: 'Este e-mail já está cadastrado' });
+    res.status(500).json({ erro: e.message });
+  }
+});
+
+router.delete('/funcionarios/:id', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM usuarios WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
 module.exports = router;

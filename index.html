@@ -658,6 +658,9 @@ textarea.form-input{min-height:100px;resize:vertical}
         <div class="sidebar-item" onclick="adminNav('financeiro',this)"><span class="sidebar-item-icon">💰</span> Honorários</div>
         <div class="sidebar-section">Ferramentas</div>
         <div class="sidebar-item" onclick="adminNav('calculadora-inss',this)"><span class="sidebar-item-icon">🧮</span> Calculadora INSS</div>
+        <div class="sidebar-section">Equipe</div>
+        <div class="sidebar-item" onclick="adminNav('funcionarios',this)"><span class="sidebar-item-icon">👥</span> Funcionários</div>
+        <div class="sidebar-item" onclick="adminNav('novo-funcionario',this)"><span class="sidebar-item-icon">➕</span> Novo Funcionário</div>
       </nav>
       <div class="sidebar-logout" onclick="sairAdmin()"><span>🚪</span> Sair do Painel</div>
     </aside>
@@ -1117,6 +1120,92 @@ textarea.form-input{min-height:100px;resize:vertical}
         </div>
 
       </div><!-- /calculadora -->
+
+      <!-- ── LISTA FUNCIONÁRIOS ── -->
+      <div class="admin-section" id="admin-funcionarios">
+        <div class="admin-header">
+          <div><div class="admin-page-title">Funcionários</div><div class="admin-page-sub">Gerencie os usuários com acesso ao sistema</div></div>
+          <button class="btn-new" onclick="adminNav('novo-funcionario',null)">+ Novo Funcionário</button>
+        </div>
+        <div class="table-card">
+          <div class="table-scroll">
+          <table><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Cadastrado em</th><th>Ações</th></tr></thead>
+          <tbody id="tb-funcionarios"><tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px;">Carregando...</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── NOVO FUNCIONÁRIO ── -->
+      <div class="admin-section" id="admin-novo-funcionario">
+        <div class="admin-header">
+          <div><div class="admin-page-title">Novo Funcionário</div><div class="admin-page-sub">Cadastre um novo usuário com acesso ao sistema</div></div>
+        </div>
+        <div class="admin-form" style="max-width:600px;">
+          <div class="admin-form-title">Cadastro de Funcionário</div>
+          <div class="admin-form-grid">
+            <span class="form-section-title">Dados Pessoais</span>
+            <div class="admin-form-row">
+              <div><label class="form-label">Nome Completo *</label><input class="form-input" type="text" id="nf-nome" placeholder="Nome do funcionário"></div>
+              <div><label class="form-label">E-mail de Acesso *</label><input class="form-input" type="email" id="nf-email" placeholder="email@escritorio.com"></div>
+            </div>
+            <div class="admin-form-row">
+              <div><label class="form-label">Cargo / Função</label><input class="form-input" type="text" id="nf-cargo" placeholder="Ex: Advogada, Secretária, Estagiário..."></div>
+              <div><label class="form-label">Perfil de Acesso *</label>
+                <select class="form-input" id="nf-role">
+                  <option value="funcionario">Funcionário — acesso padrão</option>
+                  <option value="advogada">Advogada — acesso completo</option>
+                  <option value="admin">Administrador — acesso total</option>
+                  <option value="estagiario">Estagiário — somente leitura</option>
+                </select>
+              </div>
+            </div>
+            <span class="form-section-title">Acesso ao Sistema</span>
+            <div class="admin-form-row">
+              <div>
+                <label class="form-label">Senha *</label>
+                <input class="form-input" type="password" id="nf-senha" placeholder="Mínimo 6 caracteres">
+              </div>
+              <div>
+                <label class="form-label">Confirmar Senha *</label>
+                <input class="form-input" type="password" id="nf-senha2" placeholder="Repita a senha">
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Observações</label>
+              <textarea class="form-input" id="nf-obs" style="min-height:70px" placeholder="Anotações sobre este funcionário..."></textarea>
+            </div>
+
+            <!-- PERMISSÕES -->
+            <span class="form-section-title">Permissões de Acesso</span>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--off);border:1px solid var(--cream2);border-radius:var(--r);cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="perm-clientes" checked style="width:16px;height:16px;accent-color:var(--gold)"> Ver e editar clientes
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--off);border:1px solid var(--cream2);border-radius:var(--r);cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="perm-processos" checked style="width:16px;height:16px;accent-color:var(--gold)"> Ver e editar processos
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--off);border:1px solid var(--cream2);border-radius:var(--r);cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="perm-financeiro" style="width:16px;height:16px;accent-color:var(--gold)"> Acesso financeiro
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--off);border:1px solid var(--cream2);border-radius:var(--r);cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="perm-agenda" checked style="width:16px;height:16px;accent-color:var(--gold)"> Gerenciar agenda
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--off);border:1px solid var(--cream2);border-radius:var(--r);cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="perm-inss" checked style="width:16px;height:16px;accent-color:var(--gold)"> Calculadora INSS
+              </label>
+              <label style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--off);border:1px solid var(--cream2);border-radius:var(--r);cursor:pointer;font-size:13px;">
+                <input type="checkbox" id="perm-funcionarios" style="width:16px;height:16px;accent-color:var(--gold)"> Cadastrar funcionários
+              </label>
+            </div>
+
+            <div id="nf-alert"></div>
+            <div class="admin-form-footer" style="margin-top:8px;padding-top:16px;">
+              <button class="btn-cancel-form" onclick="adminNav('funcionarios',null)">Cancelar</button>
+              <button class="btn-save" onclick="salvarFuncionario()">Cadastrar Funcionário</button>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </main>
   </div>
@@ -1849,6 +1938,83 @@ function adminNav(section,el){
     populaCalcClientes();
     renderHistorico();
     if(!periodos.length)renderPeriodos();
+  }
+  if(section==='funcionarios') carregarFuncionarios();
+}
+
+// ══════════════════════════════
+// FUNCIONÁRIOS
+// ══════════════════════════════
+async function carregarFuncionarios(){
+  const tbody=document.getElementById('tb-funcionarios');
+  if(!tbody)return;
+  try {
+    const lista = await api('GET','/funcionarios');
+    if(!lista.length){
+      tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px;">Nenhum funcionário cadastrado ainda.</td></tr>';
+      return;
+    }
+    const roleLabel={admin:'Administrador',advogada:'Advogada',funcionario:'Funcionário',estagiario:'Estagiário'};
+    const roleBadge={admin:'badge-aguardando',advogada:'badge-ativo',funcionario:'badge-andamento',estagiario:'badge-consulta'};
+    tbody.innerHTML=lista.map(f=>`
+      <tr>
+        <td><strong>${f.nome}</strong>${f.cargo?`<br><span style="font-size:11px;color:var(--muted)">${f.cargo}</span>`:''}</td>
+        <td>${f.email}</td>
+        <td><span class="badge ${roleBadge[f.role]||'badge-andamento'}">${roleLabel[f.role]||f.role}</span></td>
+        <td>${new Date(f.criado_em).toLocaleDateString('pt-BR')}</td>
+        <td>
+          <button class="btn-action btn-action-danger" onclick="removerFuncionario(${f.id},'${f.email}')">✕ Remover</button>
+        </td>
+      </tr>`).join('');
+  } catch(e){
+    tbody.innerHTML=`<tr><td colspan="5" style="text-align:center;color:#A32D2D;padding:32px;">Erro ao carregar: ${e.message}</td></tr>`;
+  }
+}
+
+async function salvarFuncionario(){
+  const nome=document.getElementById('nf-nome').value.trim();
+  const email=document.getElementById('nf-email').value.trim();
+  const cargo=document.getElementById('nf-cargo').value.trim();
+  const role=document.getElementById('nf-role').value;
+  const senha=document.getElementById('nf-senha').value;
+  const senha2=document.getElementById('nf-senha2').value;
+  const obs=document.getElementById('nf-obs').value.trim();
+  const alertEl=document.getElementById('nf-alert');
+
+  if(!nome||!email||!senha){
+    alertEl.className='alert error';alertEl.textContent='Preencha nome, e-mail e senha.';alertEl.style.display='block';
+    setTimeout(()=>alertEl.style.display='none',3000);return;
+  }
+  if(senha!==senha2){
+    alertEl.className='alert error';alertEl.textContent='As senhas não coincidem.';alertEl.style.display='block';
+    setTimeout(()=>alertEl.style.display='none',3000);return;
+  }
+  if(senha.length<6){
+    alertEl.className='alert error';alertEl.textContent='A senha deve ter no mínimo 6 caracteres.';alertEl.style.display='block';
+    setTimeout(()=>alertEl.style.display='none',3000);return;
+  }
+
+  try {
+    await api('POST','/funcionarios',{nome,email,cargo,role,senha,observacoes:obs});
+    // limpar form
+    ['nf-nome','nf-email','nf-cargo','nf-senha','nf-senha2','nf-obs'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    toast(`Funcionário ${nome} cadastrado com sucesso!`,'success');
+    adminNav('funcionarios',null);
+  } catch(e){
+    alertEl.className='alert error';alertEl.textContent='Erro: '+e.message;alertEl.style.display='block';
+    setTimeout(()=>alertEl.style.display='none',4000);
+  }
+}
+
+async function removerFuncionario(id, email){
+  if(currentUser && currentUser.email===email){toast('Você não pode remover seu próprio usuário.','error');return;}
+  if(!confirm('Tem certeza que deseja remover este funcionário?'))return;
+  try {
+    await api('DELETE',`/funcionarios/${id}`);
+    toast('Funcionário removido.');
+    carregarFuncionarios();
+  } catch(e){
+    toast('Erro ao remover: '+e.message,'error');
   }
 }
 
