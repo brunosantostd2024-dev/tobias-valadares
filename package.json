@@ -1,0 +1,13 @@
+{
+  "name": "tobias-valadares-advogadas",
+  "version": "1.0.0",
+  "description": "Site oficial - Patrícia Tobias Santos & Maria Eduarda Valadares Advogadas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
