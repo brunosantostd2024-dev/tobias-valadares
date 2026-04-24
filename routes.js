@@ -270,6 +270,92 @@ router.get('/dashboard', auth, async (req, res) => {
 });
 
 // ════════════════════════════
+// ADVOGADOS
+// ════════════════════════════
+router.get('/advogados', auth, async (req, res) => {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS advogados (
+      id SERIAL PRIMARY KEY,
+      nome VARCHAR(200) NOT NULL,
+      nome_exibicao VARCHAR(200),
+      cpf VARCHAR(20),
+      data_nascimento DATE,
+      telefone VARCHAR(30),
+      email VARCHAR(200),
+      endereco TEXT,
+      oab VARCHAR(50),
+      estado VARCHAR(10),
+      tipo VARCHAR(50) DEFAULT 'titular',
+      status VARCHAR(50) DEFAULT 'Ativo',
+      areas TEXT,
+      faculdade VARCHAR(200),
+      ano_formatura VARCHAR(10),
+      pos_graduacao TEXT,
+      bio TEXT,
+      observacoes TEXT,
+      criado_em TIMESTAMP DEFAULT NOW()
+    )`);
+    const r = await pool.query('SELECT * FROM advogados ORDER BY nome ASC');
+    res.json(r.rows);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+router.post('/advogados', auth, async (req, res) => {
+  try {
+    await pool.query(`CREATE TABLE IF NOT EXISTS advogados (
+      id SERIAL PRIMARY KEY,
+      nome VARCHAR(200) NOT NULL,
+      nome_exibicao VARCHAR(200),
+      cpf VARCHAR(20),
+      data_nascimento DATE,
+      telefone VARCHAR(30),
+      email VARCHAR(200),
+      endereco TEXT,
+      oab VARCHAR(50),
+      estado VARCHAR(10),
+      tipo VARCHAR(50) DEFAULT 'titular',
+      status VARCHAR(50) DEFAULT 'Ativo',
+      areas TEXT,
+      faculdade VARCHAR(200),
+      ano_formatura VARCHAR(10),
+      pos_graduacao TEXT,
+      bio TEXT,
+      observacoes TEXT,
+      criado_em TIMESTAMP DEFAULT NOW()
+    )`);
+    const f = req.body;
+    if (!f.nome || !f.oab) return res.status(400).json({ erro: 'Nome e OAB são obrigatórios' });
+    const r = await pool.query(`
+      INSERT INTO advogados (nome,nome_exibicao,cpf,data_nascimento,telefone,email,endereco,oab,estado,tipo,status,areas,faculdade,ano_formatura,pos_graduacao,bio,observacoes)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
+      [f.nome,f.nome_exibicao||null,f.cpf||null,f.data_nascimento||null,f.telefone||null,
+       f.email||null,f.endereco||null,f.oab,f.estado||'MG',f.tipo||'titular',
+       f.status||'Ativo',f.areas||null,f.faculdade||null,f.ano_formatura||null,
+       f.pos_graduacao||null,f.bio||null,f.observacoes||null]);
+    res.status(201).json(r.rows[0]);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+router.put('/advogados/:id', auth, async (req, res) => {
+  try {
+    const f = req.body;
+    const r = await pool.query(`
+      UPDATE advogados SET nome=$1,nome_exibicao=$2,telefone=$3,email=$4,oab=$5,estado=$6,tipo=$7,status=$8,areas=$9,bio=$10,observacoes=$11
+      WHERE id=$12 RETURNING *`,
+      [f.nome,f.nome_exibicao||null,f.telefone||null,f.email||null,f.oab,f.estado||'MG',
+       f.tipo||'titular',f.status||'Ativo',f.areas||null,f.bio||null,f.observacoes||null,req.params.id]);
+    res.json(r.rows[0]);
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+router.delete('/advogados/:id', auth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM advogados WHERE id=$1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ erro: e.message }); }
+});
+
+// ════════════════════════════
 // FUNCIONÁRIOS
 // ════════════════════════════
 router.get('/funcionarios', auth, async (req, res) => {

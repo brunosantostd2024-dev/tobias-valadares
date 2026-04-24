@@ -102,6 +102,28 @@ async function initDB() {
         observacoes TEXT,
         criado_em TIMESTAMP DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS advogados (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(200) NOT NULL,
+        nome_exibicao VARCHAR(200),
+        cpf VARCHAR(20),
+        data_nascimento DATE,
+        telefone VARCHAR(30),
+        email VARCHAR(200),
+        endereco TEXT,
+        oab VARCHAR(50),
+        estado VARCHAR(10),
+        tipo VARCHAR(50) DEFAULT 'titular',
+        status VARCHAR(50) DEFAULT 'Ativo',
+        areas TEXT,
+        faculdade VARCHAR(200),
+        ano_formatura VARCHAR(10),
+        pos_graduacao TEXT,
+        bio TEXT,
+        observacoes TEXT,
+        criado_em TIMESTAMP DEFAULT NOW()
+      );
     `);
 
     // Inserir usuário admin padrão se não existir
